@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <title>Dayz Intez Медичка</title>
+  <title>Dayz Intenz Медичка</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     * {
@@ -57,6 +57,30 @@
       font-size: 12px;
       color: #aaa;
       margin-top: 4px;
+    }
+
+    .filters {
+      margin-top: 6px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .filter-tag {
+      padding: 4px 8px;
+      border-radius: 999px;
+      border: 1px solid #444;
+      font-size: 11px;
+      background: #181818;
+      color: #ddd;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .filter-tag--active {
+      border-color: #e0b100;
+      background: #3a300a;
+      color: #ffe48a;
     }
 
     .list {
@@ -122,7 +146,7 @@
 </head>
 <body>
   <div class="app">
-    <h1>Dayz Intez Медичка</h1>
+    <h1>Dayz Intenz Медичка</h1>
 
     <div class="search-box">
       <input
@@ -133,6 +157,7 @@
         autocomplete="off"
       />
       <div id="counter" class="counter"></div>
+      <div id="filters" class="filters"></div>
     </div>
 
     <div id="list" class="list"></div>
@@ -284,7 +309,7 @@
       { name: 'Циперметрин', category: 'Яд', form: 'ampoule', level: null }
     ];
 
-    // Группируем по названию + форме: собираем все заболевания и максимальный уровень
+    // Группировка по названию+форме
     const map = {};
     rawItems.forEach(item => {
       const key = item.name + '|' + item.form;
@@ -311,10 +336,21 @@
       a.name.localeCompare(b.name, 'ru')
     );
 
+    // Список заболеваний для фильтров
+    const diseaseSet = new Set();
+    rawItems.forEach(item => diseaseSet.add(item.category));
+    const diseases = Array.from(diseaseSet).sort((a, b) =>
+      a.localeCompare(b, 'ru')
+    );
+
     const listEl = document.getElementById('list');
     const emptyEl = document.getElementById('empty');
     const counterEl = document.getElementById('counter');
     const searchEl = document.getElementById('search');
+    const filtersEl = document.getElementById('filters');
+
+    let currentQuery = '';
+    let currentDisease = null;
 
     function renderList(items) {
       listEl.innerHTML = '';
@@ -347,7 +383,7 @@
 
         const diseaseTag = document.createElement('span');
         diseaseTag.className = 'tag tag--wide';
-        diseaseTag.textContent = item.diseases.join(', ');
+        diseaseTag.textContent = 'От чего: ' + item.diseases.join(', ');
 
         tags.appendChild(formTag);
         tags.appendChild(levelTag);
@@ -359,22 +395,78 @@
       });
     }
 
-    function handleSearch() {
-      const q = searchEl.value.trim().toLowerCase();
-      if (!q) {
-        renderList(medicines);
-        return;
-      }
-      const filtered = medicines.filter(m =>
-        m.name.toLowerCase().includes(q)
-      );
+    function applyFilters() {
+      const q = currentQuery.toLowerCase();
+      const filtered = medicines.filter(m => {
+        const byName = !q || m.name.toLowerCase().includes(q);
+        const byDisease =
+          !currentDisease || m.diseases.includes(currentDisease);
+        return byName && byDisease;
+      });
       renderList(filtered);
+    }
+
+    function handleSearch() {
+      currentQuery = searchEl.value.trim();
+      applyFilters();
+    }
+
+    function initFilters() {
+      // «Все»
+      const allTag = document.createElement('button');
+      allTag.type = 'button';
+      allTag.className = 'filter-tag filter-tag--active';
+      allTag.textContent = 'Все';
+      allTag.dataset.value = '';
+      filtersEl.appendChild(allTag);
+
+      diseases.forEach(d => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'filter-tag';
+        btn.textContent = d;
+        btn.dataset.value = d;
+        filtersEl.appendChild(btn);
+      });
+
+      filtersEl.addEventListener('click', (e) => {
+        const btn = e.target.closest('.filter-tag');
+        if (!btn) return;
+
+        const value = btn.dataset.value || null;
+
+        // если клик по уже активному фильтру → сбрасываем
+        if ((value === null && currentDisease === null) ||
+            (value && value === currentDisease)) {
+          currentDisease = null;
+        } else {
+          currentDisease = value;
+        }
+
+        // обновляем классы
+        document.querySelectorAll('.filter-tag').forEach(t => {
+          t.classList.remove('filter-tag--active');
+        });
+
+        if (currentDisease === null) {
+          const all = document.querySelector('.filter-tag[data-value=""]');
+          if (all) all.classList.add('filter-tag--active');
+        } else {
+          const active = document.querySelector(
+            `.filter-tag[data-value="${CSS.escape(currentDisease)}"]`
+          );
+          if (active) active.classList.add('filter-tag--active');
+        }
+
+        applyFilters();
+      });
     }
 
     searchEl.addEventListener('input', handleSearch);
 
-    // первая отрисовка
-    renderList(medicines);
+    // инициализация
+    initFilters();
+    applyFilters();
   </script>
 </body>
 </html>
