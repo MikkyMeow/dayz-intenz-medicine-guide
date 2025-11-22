@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>Dayz Intez медичка</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #111;
+      color: #f5f5f5;
+      padding: 12px;
+    }
+
+    .app {
+      max-width: 480px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      font-size: 20px;
+      margin-bottom: 12px;
+      text-align: center;
+    }
+
+    .search-box {
+      margin-bottom: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: #111;
+      padding-bottom: 8px;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid #444;
+      font-size: 16px;
+      background: #1b1b1b;
+      color: #f5f5f5;
+    }
+
+    .search-input:focus {
+      outline: none;
+      border-color: #888;
+    }
+
+    .counter {
+      font-size: 12px;
+      color: #aaa;
+      margin-top: 4px;
+    }
+
+    .list {
+      margin-top: 4px;
+    }
+
+    .item {
+      background: #1b1b1b;
+      border-radius: 10px;
+      margin-bottom: 8px;
+      border: 1px solid #2a2a2a;
+      padding: 10px 12px;
+    }
+
+    .item-name {
+      font-size: 15px;
+      font-weight: 500;
+      margin-bottom: 6px;
+    }
+
+    .item-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      align-items: center;
+      font-size: 11px;
+      color: #bbb;
+    }
+
+    .tag {
+      padding: 3px 8px;
+      border-radius: 999px;
+      border: 1px solid #444;
+      font-size: 10px;
+      text-transform: uppercase;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .tag--wide {
+      text-transform: none;
+      font-size: 11px;
+    }
+
+    .no-results {
+      margin-top: 16px;
+      text-align: center;
+      font-size: 14px;
+      color: #888;
+    }
+
+    @media (min-width: 480px) {
+      body {
+        padding: 20px;
+      }
+      h1 {
+        font-size: 22px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <h1>Справочник медикаментов</h1>
+
+    <div class="search-box">
+      <input
+        id="search"
+        class="search-input"
+        type="text"
+        placeholder="Поиск по названию..."
+        autocomplete="off"
+      />
+      <div id="counter" class="counter"></div>
+    </div>
+
+    <div id="list" class="list"></div>
+    <div id="empty" class="no-results" style="display:none;">
+      Ничего не нашлось. Проверь, как пишешь название.
+    </div>
+  </div>
+
+  <script>
+    const formLabels = {
+      tablet: 'Таблетки',
+      ampoule: 'Ампулы',
+      ointment: 'Мазь'
+    };
+
+    const rawItems = [
+      // ОБЕЗБАЛИВАЮЩИЕ
+      { name: 'Аэртал', category: 'Обезбаливающие', form: 'tablet', level: 1 },
+      { name: 'Анальгин', category: 'Обезбаливающие', form: 'tablet', level: 1 },
+      { name: 'Ибупрофен', category: 'Обезбаливающие', form: 'tablet', level: 1 },
+      { name: 'Мовалис', category: 'Обезбаливающие', form: 'tablet', level: 1 },
+      { name: 'Найз', category: 'Обезбаливающие', form: 'tablet', level: 1 },
+      { name: 'Нимесил', category: 'Обезбаливающие', form: 'tablet', level: 1 },
+      { name: 'Ноопепт', category: 'Обезбаливающие', form: 'tablet', level: 1 },
+      { name: 'Нурофен', category: 'Обезбаливающие', form: 'tablet', level: 1 },
+      { name: 'Пенталгин', category: 'Обезбаливающие', form: 'tablet', level: 1 },
+      { name: 'Цитрамон', category: 'Обезбаливающие', form: 'tablet', level: 1 },
+
+      { name: 'Иринэкс', category: 'Обезбаливающие', form: 'ampoule', level: 2 },
+      { name: 'Гексобарбитал', category: 'Обезбаливающие', form: 'ampoule', level: 2 },
+      { name: 'Кетамин', category: 'Обезбаливающие', form: 'ampoule', level: 2 },
+      { name: 'Кетопрофен', category: 'Обезбаливающие', form: 'ampoule', level: 2 },
+      { name: 'Кеторол', category: 'Обезбаливающие', form: 'ampoule', level: 1 },
+      { name: 'Нимесулид', category: 'Обезбаливающие', form: 'ampoule', level: 2 },
+      { name: 'Новокаин', category: 'Обезбаливающие', form: 'ampoule', level: 2 },
+      { name: 'Промедол', category: 'Обезбаливающие', form: 'ampoule', level: 3 },
+      { name: 'Пропанидид', category: 'Обезбаливающие', form: 'ampoule', level: 2 },
+      { name: 'Пропофол', category: 'Обезбаливающие', form: 'ampoule', level: 3 },
+      { name: 'Натри-оксибат', category: 'Обезбаливающие', form: 'ampoule', level: 3 },
+      { name: 'Тиопентал', category: 'Обезбаливающие', form: 'ampoule', level: 3 },
+
+      // ОТРАВЛЕНИЕ
+      { name: 'Карбопект', category: 'Отравление', form: 'tablet', level: 1 },
+      { name: 'Мезим-Форте', category: 'Отравление', form: 'tablet', level: 1 },
+      { name: 'Месазалин', category: 'Отравление', form: 'tablet', level: 1 },
+      { name: 'Нифуроксазид', category: 'Отравление', form: 'tablet', level: 1 },
+      { name: 'Полисорб', category: 'Отравление', form: 'tablet', level: 1 },
+      { name: 'Салофальк', category: 'Отравление', form: 'tablet', level: 1 },
+      { name: 'Уголь', category: 'Отравление', form: 'tablet', level: 1 },
+      { name: 'Фталазол', category: 'Отравление', form: 'tablet', level: 1 },
+      { name: 'Церукал', category: 'Отравление', form: 'tablet', level: 1 },
+      { name: 'Эрсевурил', category: 'Отравление', form: 'tablet', level: 1 },
+      { name: 'Энтерофурил', category: 'Отравление', form: 'tablet', level: 1 },
+
+      { name: 'Гептрал', category: 'Отравление', form: 'ampoule', level: 2 },
+      { name: 'Диклофенак', category: 'Отравление', form: 'ampoule', level: 2 },
+      { name: 'Кеторол', category: 'Отравление', form: 'ampoule', level: 2 },
+      { name: 'Метоклопрамид', category: 'Отравление', form: 'ampoule', level: 2 },
+      { name: 'Церукал', category: 'Отравление', form: 'ampoule', level: 2 },
+
+      // АНТИБИОТИКИ
+      { name: 'Амоксиклав', category: 'Антибиотики', form: 'tablet', level: 2 },
+      { name: 'Кмоксиван', category: 'Антибиотики', form: 'tablet', level: 2 },
+      { name: 'Амибактам', category: 'Антибиотики', form: 'tablet', level: 1 },
+      { name: 'Ампициллин', category: 'Антибиотики', form: 'tablet', level: 2 },
+      { name: 'Ибупрофен', category: 'Антибиотики', form: 'tablet', level: 2 },
+      { name: 'Нурофен', category: 'Антибиотики', form: 'tablet', level: 2 },
+      { name: 'Парацетамол', category: 'Антибиотики', form: 'tablet', level: 1 },
+      { name: 'Пиперациллин', category: 'Антибиотики', form: 'tablet', level: 1 },
+      { name: 'Тетрациклин', category: 'Антибиотики', form: 'tablet', level: 1 },
+      { name: 'Трихопол', category: 'Антибиотики', form: 'tablet', level: 1 },
+      { name: 'Ципролет', category: 'Антибиотики', form: 'tablet', level: 1 },
+
+      { name: 'Гримипенем', category: 'Антибиотики', form: 'ampoule', level: 2 },
+      { name: 'Кеторол', category: 'Антибиотики', form: 'ampoule', level: 2 },
+      { name: 'Цефтриаксон', category: 'Антибиотики', form: 'ampoule', level: 2 },
+      { name: 'Циласпен', category: 'Антибиотики', form: 'ampoule', level: 2 },
+      { name: 'Эритромицин', category: 'Антибиотики', form: 'ampoule', level: 2 },
+
+      // СЕПСИС
+      { name: 'Амоксиван', category: 'Сепсис', form: 'ampoule', level: 3 },
+      { name: 'Имипенем', category: 'Сепсис', form: 'ampoule', level: 3 },
+      { name: 'Оксациллин', category: 'Сепсис', form: 'ampoule', level: 3 },
+      { name: 'Топоизомераза', category: 'Сепсис', form: 'ampoule', level: 3 },
+      { name: 'Флемоклав', category: 'Сепсис', form: 'ampoule', level: 3 },
+
+      // ВИРУС Z
+      { name: 'Зивирол', category: 'Вирус Z', form: 'ampoule', level: null },
+
+      // СОТРЯСЕНИЕ МОЗГА
+      { name: 'Ноопепт', category: 'Сотрясение мозга', form: 'tablet', level: 1 },
+      { name: 'Актовегин', category: 'Сотрясение мозга', form: 'ampoule', level: null },
+      { name: 'Мексидол', category: 'Сотрясение мозга', form: 'ampoule', level: null },
+      { name: 'Нейрокс', category: 'Сотрясение мозга', form: 'ampoule', level: null },
+
+      // ГЕМАТОМЫ
+      { name: 'Випросал', category: 'Гематомы', form: 'ointment', level: null },
+      { name: 'Капсикам', category: 'Гематомы', form: 'ointment', level: null },
+      { name: 'Финалгон', category: 'Гематомы', form: 'ointment', level: null },
+      { name: 'Паклитаксел-Эбеве', category: 'Гематомы', form: 'ampoule', level: null },
+
+      // СВЕРТЫВАЕМОСТЬ КРОВИ
+      { name: 'Викасел', category: 'Свертываемость крови', form: 'tablet', level: null },
+      { name: 'Дицинон', category: 'Свертываемость крови', form: 'tablet', level: null },
+      { name: 'Сорбифер Дурулос', category: 'Свертываемость крови', form: 'tablet', level: null },
+
+      { name: 'Амилизеремовая кислота', category: 'Свертываемость крови', form: 'ampoule', level: null },
+      { name: 'Викасол', category: 'Свертываемость крови', form: 'ampoule', level: null },
+      { name: 'Нонаког Альфа', category: 'Свертываемость крови', form: 'ampoule', level: null },
+      { name: 'Этамзилат', category: 'Свертываемость крови', form: 'ampoule', level: null },
+      { name: 'Эритропоэтин', category: 'Свертываемость крови', form: 'ampoule', level: null },
+
+      // РЕГЕНЕРАЦИЯ КРОВИ
+      { name: 'Ировит', category: 'Регенерация крови', form: 'tablet', level: null },
+      { name: 'Сорбифер Дурулес', category: 'Регенерация крови', form: 'tablet', level: null },
+      { name: 'Тардиферон', category: 'Регенерация крови', form: 'tablet', level: null },
+      { name: 'Хеферол', category: 'Регенерация крови', form: 'tablet', level: null },
+
+      { name: 'Мальтофер', category: 'Регенерация крови', form: 'ampoule', level: null },
+      { name: 'Перфторан', category: 'Регенерация крови', form: 'ampoule', level: null },
+      { name: 'Эритропоэтин', category: 'Регенерация крови', form: 'ampoule', level: null },
+
+      // АНТИДЕПРЕССАНТ
+      { name: 'Агтеминол', category: 'Антидепрессант', form: 'tablet', level: 1 },
+      { name: 'Адепресс', category: 'Антидепрессант', form: 'tablet', level: 1 },
+      { name: 'Актапараксетин', category: 'Антидепрессант', form: 'tablet', level: 1 },
+      { name: 'Амитриптилин', category: 'Антидепрессант', form: 'tablet', level: 1 },
+      { name: 'Венлафаксин', category: 'Антидепрессант', form: 'tablet', level: 1 },
+
+      { name: 'Актапароксетин', category: 'Антидепрессант', form: 'ampoule', level: 2 },
+      { name: 'Метралиндол', category: 'Антидепрессант', form: 'ampoule', level: 2 },
+
+      // РАДИАЦИЯ
+      { name: 'Б-190', category: 'Радиация', form: 'tablet', level: 1 },
+      { name: 'Калий-железо Гексоцизи', category: 'Радиация', form: 'tablet', level: 1 },
+      { name: 'Калия-йодид', category: 'Радиация', form: 'tablet', level: 1 },
+      { name: 'Мексамин', category: 'Радиация', form: 'tablet', level: 2 },
+      { name: 'Цистамин', category: 'Радиация', form: 'tablet', level: 1 },
+
+      { name: 'Карбоксим', category: 'Радиация', form: 'ampoule', level: 2 },
+      { name: 'Пентацин', category: 'Радиация', form: 'ampoule', level: 2 },
+
+      // ЯД
+      { name: 'Арсеник', category: 'Яд', form: 'ampoule', level: null },
+      { name: 'Диазинон', category: 'Яд', form: 'ampoule', level: null },
+      { name: 'Дихлофос', category: 'Яд', form: 'ampoule', level: null },
+      { name: 'Мышьяк', category: 'Яд', form: 'ampoule', level: null },
+      { name: 'Новичок', category: 'Яд', form: 'ampoule', level: null },
+      { name: 'Циперметрин', category: 'Яд', form: 'ampoule', level: null }
+    ];
+
+    // Группируем по названию + форме: собираем все заболевания и максимальный уровень
+    const map = {};
+    rawItems.forEach(item => {
+      const key = item.name + '|' + item.form;
+      if (!map[key]) {
+        map[key] = {
+          name: item.name,
+          form: item.form,
+          diseases: [item.category],
+          level: item.level !== undefined ? item.level : null
+        };
+      } else {
+        if (!map[key].diseases.includes(item.category)) {
+          map[key].diseases.push(item.category);
+        }
+        if (item.level != null) {
+          if (map[key].level == null || item.level > map[key].level) {
+            map[key].level = item.level;
+          }
+        }
+      }
+    });
+
+    const medicines = Object.values(map).sort((a, b) =>
+      a.name.localeCompare(b.name, 'ru')
+    );
+
+    const listEl = document.getElementById('list');
+    const emptyEl = document.getElementById('empty');
+    const counterEl = document.getElementById('counter');
+    const searchEl = document.getElementById('search');
+
+    function renderList(items) {
+      listEl.innerHTML = '';
+      if (!items.length) {
+        emptyEl.style.display = 'block';
+        counterEl.textContent = '0 препаратов';
+        return;
+      }
+      emptyEl.style.display = 'none';
+      counterEl.textContent = `${items.length} препарат(ов)`;
+
+      items.forEach((item) => {
+        const card = document.createElement('div');
+        card.className = 'item';
+
+        const nameEl = document.createElement('div');
+        nameEl.className = 'item-name';
+        nameEl.textContent = item.name;
+
+        const tags = document.createElement('div');
+        tags.className = 'item-tags';
+
+        const formTag = document.createElement('span');
+        formTag.className = 'tag';
+        formTag.textContent = formLabels[item.form] || item.form;
+
+        const levelTag = document.createElement('span');
+        levelTag.className = 'tag';
+        levelTag.textContent = 'Уровень: ' + (item.level != null ? item.level : '—');
+
+        const diseaseTag = document.createElement('span');
+        diseaseTag.className = 'tag tag--wide';
+        diseaseTag.textContent = item.diseases.join(', ');
+
+        tags.appendChild(formTag);
+        tags.appendChild(levelTag);
+        tags.appendChild(diseaseTag);
+
+        card.appendChild(nameEl);
+        card.appendChild(tags);
+        listEl.appendChild(card);
+      });
+    }
+
+    function handleSearch() {
+      const q = searchEl.value.trim().toLowerCase();
+      if (!q) {
+        renderList(medicines);
+        return;
+      }
+      const filtered = medicines.filter(m =>
+        m.name.toLowerCase().includes(q)
+      );
+      renderList(filtered);
+    }
+
+    searchEl.addEventListener('input', handleSearch);
+
+    // первая отрисовка
+    renderList(medicines);
+  </script>
+</body>
+</html>
